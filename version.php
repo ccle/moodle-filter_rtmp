@@ -28,7 +28,7 @@
 
 defined('MOODLE_INTERNAL') || die();
 
-$plugin->version   = 2013021401;       // The current plugin version (Date: YYYYMMDDXX)
-$plugin->requires  = 2012062501;       // Requires this Moodle version
+$plugin->version   = 2013052001;       // The current plugin version (Date: YYYYMMDDXX)
+$plugin->requires  = 2012120301;       // Requires this Moodle version
 $plugin->component = 'filter_rtmp';    // Full name of the plugin (used for diagnostics)
 
