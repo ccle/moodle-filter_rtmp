@@ -96,10 +96,21 @@ class filter_rtmp extends moodle_text_filter
 
         // Only want one init per page, so one and done
         if (!$js_init_called) {
-            $PAGE->requires->js_init_call('M.filter_rtmp.init', null, true, array('name' => 'filter_rtmp', 'fullpath' => '/filter/rtmp/module.js', 'requires' => array('node')));
+
             $js_init_called = true;
+
+            if (empty($CFG->cachetext)) {
+                // If not caching filter output, then cleaner
+                // to add a page requirement
+                $PAGE->requires->js_init_call('M.filter_rtmp.init', null, true, array('name' => 'filter_rtmp', 'fullpath' => '/filter/rtmp/module.js', 'requires' => array('node')));
+            } else {
+                $newtext .= "\n"
+                         . html_writer::script("M.yui.add_module({ filter_rtmp: { name: 'filter_rtmp', fullpath: '{$CFG->wwwroot}/filter/rtmp/module.js', requires: ['node'] }});\n"
+                         .                     "YUI().use('node', function(Y) { Y.on('domready', function() { Y.use('filter_rtmp', function(Y) { M.filter_rtmp.init(Y); }); }); });");
+            }
+
         }
-        
+
         return $newtext;
 
     }
