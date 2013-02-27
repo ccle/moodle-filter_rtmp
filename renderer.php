@@ -102,8 +102,23 @@ class filter_rtmp_player_video extends core_media_player
             $url_path = substr($url_path, 1);
         }
         $path_parts = explode('/', $url_path);
-        $media_conx = str_replace($url_path, '', $url->out(false)) . array_shift($path_parts);
-        $media_path = trim(implode('/', $path_parts));
+
+        $provider = $url->get_param('provider');
+        if ($provider != null) {
+           $url->remove_params(array('provider'));
+        }
+        switch ($provider) {
+
+            case "acf": /* Amazon Cloudfront */
+                $media_conx = str_replace($url_path, '', $url->out(false)) . array_shift($path_parts) . '/' . array_shift($path_parts);
+                $media_path = trim(implode('/', $path_parts));
+                break;
+
+            default:    /* Flash Media, Red5, Wowza */
+                $media_conx = str_replace($url_path, '', $url->out(false)) . array_shift($path_parts);
+                $media_path = trim(implode('/', $path_parts));
+
+        }
 
         // If there is an extension, remove it, but in the
         // case of an mp4 leave it as well as prepend it to
@@ -173,8 +188,23 @@ class filter_rtmp_player_audio extends core_media_player
             $url_path = substr($url_path, 1);
         }
         $path_parts = explode('/', $url_path);
-        $media_conx = str_replace($url_path, '', $url->out(false)) . array_shift($path_parts);
-        $media_path = implode('/', $path_parts);
+
+        $provider = $url->get_param('provider');
+        if ($provider != null) {
+           $url->remove_params(array('provider'));
+        }
+        switch ($provider) {
+
+            case "acf": /* Amazon Cloudfront */
+                $media_conx = str_replace($url_path, '', $url->out(false)) . array_shift($path_parts) . '/' . array_shift($path_parts);
+                $media_path = trim(implode('/', $path_parts));
+                break;
+
+            default:    /* Flash Media, Red5, Wowza */
+                $media_conx = str_replace($url_path, '', $url->out(false)) . array_shift($path_parts);
+                $media_path = trim(implode('/', $path_parts));
+
+        }
 
         // If there is an extension, remove it, but in the
         // case of an mp4 leave it as well as prepend it to
