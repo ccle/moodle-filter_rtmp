@@ -39,7 +39,7 @@ class filter_rtmp_renderer extends core_media_renderer
     /** @var string Regex pattern for links which may contain embeddable content */
     private $embeddablemarkers;
 
-    
+
     /**
      * Obtains a raw list of player objects that includes objects regardless
      * of whether they are disabled or not, and without sorting.
@@ -65,7 +65,7 @@ class filter_rtmp_renderer extends core_media_renderer
 
 
 
-class filter_rtmp_player_video extends core_media_player 
+class filter_rtmp_player_video extends core_media_player
 {
 
     const            RANK                       = 1001;
@@ -107,18 +107,18 @@ class filter_rtmp_player_video extends core_media_player
         if ($provider != null) {
            $url->remove_params(array('provider'));
         }
+
         switch ($provider) {
-
             case "acf": /* Amazon Cloudfront */
-                $media_conx = str_replace($url_path, '', $url->out(false)) . array_shift($path_parts) . '/' . array_shift($path_parts);
-                $media_path = trim(implode('/', $path_parts));
+                $media_conx = str_replace($url_path, '', $url->out_omit_querystring()) . array_shift($path_parts) . '/' . array_shift($path_parts);
                 break;
-
             default:    /* Flash Media, Red5, Wowza */
-                $media_conx = str_replace($url_path, '', $url->out(false)) . array_shift($path_parts);
-                $media_path = trim(implode('/', $path_parts));
-
+                $media_conx = str_replace($url_path, '', $url->out_omit_querystring()) . array_shift($path_parts);
         }
+
+        // Put together the media path from the remainder of
+        // the un-shifted path_parts elements
+        $media_path = trim(implode('/', $path_parts));
 
         // If there is an extension, remove it, but in the
         // case of an mp4 leave it as well as prepend it to
@@ -127,16 +127,24 @@ class filter_rtmp_player_video extends core_media_player
         if (preg_match('/\.(' . join('|', $this->get_supported_extensions()) . ')$/i', $media_path, $matches)) {
             switch ($matches[1]) {
                 case "mp4" :
-                    $media_path = $matches[1] . ':' . $media_path;
+                    if (0 === preg_match("/^mp4:/", $media_path)) {
+                        $media_path = $matches[1] . ':' . $media_path;
+                    }
                     break;
                 default :
                     $media_path = substr($media_path, 0, 0 - strlen($matches[0]));
             }
         }
 
+        // Append the remainder (query string) of the original URL
+        $query_str  = htmlspecialchars_decode($url->get_query_string(false));
+        if (!empty($query_str)) {
+            $media_path .= '?' . $query_str;
+        }
+
         // Fallback span (will normally contain link).
         $output = html_writer::tag('span', core_media_player::PLACEHOLDER,
-            array('id' => $id, 'class' => 'mediaplugin filter_rtmp_video', 
+            array('id' => $id, 'class' => 'mediaplugin filter_rtmp_video',
                   'data-media-conx' => $media_conx, 'data-media-path' => $media_path,
                   'data-media-height' => $height, 'data-media-width' => $width,
                   'data-media-autosize' => $autosize)
@@ -152,12 +160,12 @@ class filter_rtmp_player_video extends core_media_player
         return explode(',', self::EXTENSIONS);
     }
 
-    
+
     public function get_rank()
     {
         return self::RANK;
     }
-    
+
 } // class filter_rtmp_player_video
 
 
@@ -172,7 +180,7 @@ class filter_rtmp_player_audio extends core_media_player
 
     public function embed($urls, $name, $width, $height, $options)
     {
-        
+
         // Only supporting a single URL, take the first
         $url = reset($urls);
 
@@ -193,18 +201,18 @@ class filter_rtmp_player_audio extends core_media_player
         if ($provider != null) {
            $url->remove_params(array('provider'));
         }
+
         switch ($provider) {
-
             case "acf": /* Amazon Cloudfront */
-                $media_conx = str_replace($url_path, '', $url->out(false)) . array_shift($path_parts) . '/' . array_shift($path_parts);
-                $media_path = trim(implode('/', $path_parts));
+                $media_conx = str_replace($url_path, '', $url->out_omit_querystring()) . array_shift($path_parts) . '/' . array_shift($path_parts);
                 break;
-
             default:    /* Flash Media, Red5, Wowza */
-                $media_conx = str_replace($url_path, '', $url->out(false)) . array_shift($path_parts);
-                $media_path = trim(implode('/', $path_parts));
-
+                $media_conx = str_replace($url_path, '', $url->out_omit_querystring()) . array_shift($path_parts);
         }
+
+        // Put together the media path from the remainder of
+        // the un-shifted path_parts elements
+        $media_path = trim(implode('/', $path_parts));
 
         // If there is an extension, remove it, but in the
         // case of an mp4 leave it as well as prepend it to
@@ -213,13 +221,21 @@ class filter_rtmp_player_audio extends core_media_player
         if (preg_match('/\.(' . join('|', $this->get_supported_extensions()) . ')$/i', $media_path, $matches)) {
             switch ($matches[1]) {
                 case "mp3" :
-                    $media_path = substr($matches[1] . ':' . $media_path, 0, 0 - strlen($matches[0]));
+                    if (0 === preg_match("/^mp3:/", $media_path)) {
+                        $media_path = substr($matches[1] . ':' . $media_path, 0, 0 - strlen($matches[0]));
+                    }
                     break;
                 default :
                     $media_path = substr($media_path, 0, 0 - strlen($matches[0]));
             }
         }
-        
+
+        // Append the remainder (query string) of the original URL
+        $query_str  = htmlspecialchars_decode($url->get_query_string(false));
+        if (!empty($query_str)) {
+            $media_path .= '?' . $query_str;
+        }
+
         // Fallback span (will normally contain link).
         $output = html_writer::tag('span', core_media_player::PLACEHOLDER,
             array('id' => $id, 'class' => 'mediaplugin filter_rtmp_audio',
@@ -231,13 +247,13 @@ class filter_rtmp_player_audio extends core_media_player
 
     }
 
-    
+
     public function get_supported_extensions()
     {
         return explode(',', self::EXTENSIONS);
     }
 
-    
+
     public function get_rank()
     {
         return self::RANK;
@@ -252,7 +268,7 @@ class filter_rtmp_player_link extends core_media_player
 
     public function embed($urls, $name, $width, $height, $options)
     {
-        
+
         // If link is turned off, return empty.
         if (!empty($options[core_media::OPTION_NO_LINK])) {
             return '';
@@ -261,7 +277,7 @@ class filter_rtmp_player_link extends core_media_player
         // Build up link content.
         $output = '';
         foreach ($urls as $url) {
-            
+
             $title = core_media::get_filename($url);
             $printlink = html_writer::link($url, $title, array('class' => 'mediafallbacklink nomediaplugin'));
             if ($output) {
@@ -269,13 +285,13 @@ class filter_rtmp_player_link extends core_media_player
                 // for all formats, separated by /.
                 $output .= ' / ';
             }
-            
+
             $output .= $printlink;
-            
+
         }
-        
+
         return $output;
-        
+
     }
 
 
