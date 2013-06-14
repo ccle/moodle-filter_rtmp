@@ -29,9 +29,9 @@ M.filter_rtmp = {
 
     Y: null, transaction: [],
 
-    _js_flowplayer: M.cfg.wwwroot + '/lib/flowplayer/flowplayer-3.2.11.min.js',
-    _swf_cfg_base:  M.cfg.wwwroot + '/lib/flowplayer/flowplayer-3.2.14.swf',
-    _swf_cfg_rtmp:  M.cfg.wwwroot + '/filter/rtmp/flowplayer.rtmp-3.2.12.swf',
+    _js_flowplayer: M.cfg.wwwroot + filter_rtmp_flowplayer_js,
+    _swf_cfg_base:  M.cfg.wwwroot + filter_rtmp_flowplayer_swf,
+    _swf_cfg_rtmp:  M.cfg.wwwroot + filter_rtmp_flowplayer_rtmp,
     _min_video_width: 300,
     _default_volume: 80,
 

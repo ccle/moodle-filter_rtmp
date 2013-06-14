@@ -33,5 +33,5 @@ $plugin->requires  = 2012120301;       // Requires this Moodle version
 $plugin->cron      = 0;
 $plugin->component = 'filter_rtmp';    // Full name of the plugin (used for diagnostics)
 $plugin->maturity  = MATURITY_STABLE;
-$plugin->release   = '1.0 (Build: 2013022800)';
+$plugin->release   = '1.0 (Build: 2013061400)';
 

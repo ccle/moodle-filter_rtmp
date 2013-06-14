@@ -69,7 +69,7 @@ class filter_rtmp_player_video extends core_media_player
 {
 
     const            RANK                       = 1001;
-    const            EXTENSIONS                 = 'flv,mp4';
+    const            EXTENSIONS                 = 'flv,mp4,f4v';
 
     const            DEFAULT_WIDTH              = 320;
     const            DEFAULT_HEIGHT             = 240;
@@ -129,6 +129,11 @@ class filter_rtmp_player_video extends core_media_player
                 case "mp4" :
                     if (0 === preg_match("/^mp4:/", $media_path)) {
                         $media_path = $matches[1] . ':' . $media_path;
+                    }
+                    break;
+                case "f4v" :
+                    if (0 === preg_match("/^mp4:/", $media_path)) {
+                        $media_path = 'mp4:' . $media_path;
                     }
                     break;
                 default :

@@ -99,11 +99,20 @@ class filter_rtmp extends moodle_text_filter
 
             $js_init_called = true;
 
+            // Need to emit page (global) js vars so our js module
+            // can load the currently available Flowplayer files
+            $newtext .= "\n" . html_writer::script(self::get_flowplayer_filenames());
+
             if (empty($CFG->cachetext)) {
                 // If not caching filter output, then cleaner
                 // to add a page requirement
                 $PAGE->requires->js_init_call('M.filter_rtmp.init', null, true, array('name' => 'filter_rtmp', 'fullpath' => '/filter/rtmp/module.js', 'requires' => array('node')));
             } else {
+                // If caching, this filter will never get called
+                // until cache is refreshed, side-effect is that
+                // needed call to M.filter_rtmp.init is not made
+                // when needed, so have to make that js call part
+                // of the substitued (and cached) content 
                 $newtext .= "\n"
                          . html_writer::script("M.yui.add_module({ filter_rtmp: { name: 'filter_rtmp', fullpath: '{$CFG->wwwroot}/filter/rtmp/module.js', requires: ['node'] }});\n"
                          .                     "YUI().use('node', function(Y) { Y.on('domready', function() { Y.use('filter_rtmp', function(Y) { M.filter_rtmp.init(Y); }); }); });");
@@ -221,5 +230,43 @@ class filter_rtmp extends moodle_text_filter
         return $returnurls;
     }
 
+    
+    /**
+     * Determine which flowplayer files are present, and from the names
+     * the version is apparent.
+     *
+     * @access private
+     * @static
+     *
+     * @return array Array of filenames
+     * @uses $CFG
+     */
+    private static function get_flowplayer_filenames()
+    {
+        global $CFG;
+
+
+
+        $flowlibpath    = $CFG->libdir  . "/flowplayer";
+        $filterpath     = $CFG->dirroot . "/filter/rtmp";
+
+        $glob_paths = array(
+                'js'   => $flowlibpath . "/flowplayer-[0-9].[0-9].?*.min.js",
+                'swf'  => $flowlibpath . "/flowplayer-[0-9].[0-9].?*.swf",
+                'rtmp' => $filterpath  . "/flowplayer.rtmp-[0-9].[0-9].?*.swf"
+        );
+
+        $retval = '';
+        foreach ($glob_paths as $key => $path) {
+            if (($hit = glob($path))) {
+                $relpath = str_replace($CFG->dirroot, '', $hit[0]);
+                $retval .= "var filter_rtmp_flowplayer_$key='$relpath';";
+            }
+        }
+
+        return $retval;
+
+    }
+    
 } // class filter_rtmp
 
