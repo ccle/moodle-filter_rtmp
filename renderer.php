@@ -79,12 +79,9 @@ class filter_rtmp_player_video extends core_media_player
     public function embed($urls, $name, $width, $height, $options)
     {
 
-        // Only supporting a single URL, take the first
-        $url = reset($urls);
-
         // Unique id even across different http requests made at the same time
         // (for AJAX, iframes).
-        $id = 'filter_rtmp_video_' . md5(time() . '_' . rand());
+        $unique_id = "filter_rtmp_" . md5(time() . '_' . rand());
 
         // Compute width and height.
         $autosize = false;
@@ -94,68 +91,87 @@ class filter_rtmp_player_video extends core_media_player
             $autosize  = true;
         }
 
-        // Parse the URL here to simplify the JavaScript
-        // module. FlowPlayer rtmp needs the URL massaged
-        // a little.
-        $url_path = $url->get_path(false);
-        if (0 === strpos($url_path, '/' )) {
-            $url_path = substr($url_path, 1);
-        }
-        $path_parts = explode('/', $url_path);
+        $clip_array_javascript = "var {$unique_id} = [];";
+        $clip_index = 0;
+        foreach ($urls as $url) {
 
-        $provider = $url->get_param('provider');
-        if ($provider != null) {
-           $url->remove_params(array('provider'));
-        }
-
-        switch ($provider) {
-            case "acf": /* Amazon Cloudfront */
-                $media_conx = str_replace($url_path, '', $url->out_omit_querystring()) . array_shift($path_parts) . '/' . array_shift($path_parts);
-                break;
-            default:    /* Flash Media, Red5, Wowza */
-                $media_conx = str_replace($url_path, '', $url->out_omit_querystring()) . array_shift($path_parts);
-        }
-
-        // Put together the media path from the remainder of
-        // the un-shifted path_parts elements
-        $media_path = trim(implode('/', $path_parts));
-
-        // If there is an extension, remove it, but in the
-        // case of an mp4 leave it as well as prepend it to
-        // media path
-        $matches = array();
-        if (preg_match('/\.(' . join('|', $this->get_supported_extensions()) . ')$/i', $media_path, $matches)) {
-            switch ($matches[1]) {
-                case "mp4" :
-                    if (0 === preg_match("/^mp4:/", $media_path)) {
-                        $media_path = $matches[1] . ':' . $media_path;
-                    }
-                    break;
-                case "f4v" :
-                    if (0 === preg_match("/^mp4:/", $media_path)) {
-                        $media_path = 'mp4:' . $media_path;
-                    }
-                    break;
-                default :
-                    $media_path = substr($media_path, 0, 0 - strlen($matches[0]));
+            // Parse the URL here to simplify the JavaScript
+            // module. FlowPlayer rtmp needs the URL massaged
+            // a little.
+            $url_path = $url->get_path(false);
+            if (0 === strpos($url_path, '/' )) {
+                $url_path = substr($url_path, 1);
             }
+            $path_parts = explode('/', $url_path);
+
+            $provider = $url->get_param('provider');
+            switch ($provider) {
+                case "acf": /* Amazon Cloudfront */
+                    $media_conx = str_replace($url_path, '', $url->out_omit_querystring()) . array_shift($path_parts) . '/' . array_shift($path_parts);
+                    break;
+                default:    /* Flash Media, Red5, Wowza */
+                    $media_conx = str_replace($url_path, '', $url->out_omit_querystring()) . array_shift($path_parts);
+            }
+
+            // Put together the media path from the remainder of
+            // the un-shifted path_parts elements
+            $media_path = trim(implode('/', $path_parts));
+
+            // Get the name from the $options, if not present there
+            // take it from last segment of media path
+            $media_title = isset($options['PLAYLIST_NAMES'][$url->out()])
+                         ? $options['PLAYLIST_NAMES'][$url->out()]
+                         : str_replace('+', ' ', array_pop($path_parts));
+
+            // Now that the title has been referenced using the orig
+            // URL, remove the provider param if it is present
+            if ($provider != null) {
+                $url->remove_params(array('provider'));
+            }
+
+            // If there is an extension, remove it, but in the
+            // case of an mp4 leave it as well as prepend it to
+            // media path
+            $matches = array();
+            if (preg_match('/\.(' . join('|', $this->get_supported_extensions()) . ')$/i', $media_path, $matches)) {
+                switch ($matches[1]) {
+                    case "mp4" :
+                    case "f4v" :
+                        if (0 === preg_match("/^mp4:/", $media_path)) {
+                            $media_path = 'mp4:' . $media_path;
+                        }
+                        break;
+                    default :
+                        $media_path = substr($media_path, 0, 0 - strlen($matches[0]));
+                }
+            }
+
+            // Append the remainder (query string) of the original URL
+            $query_str  = htmlspecialchars_decode($url->get_query_string(false));
+            if (!empty($query_str)) {
+                $media_path .= '?' . $query_str;
+            }
+
+            $clip_array_javascript .= "\n{$unique_id}[{$clip_index}] = { netConnectionUrl: '{$media_conx}', url: '{$media_path}', title: '{$media_title}', index: {$clip_index} };";
+            $clip_index++;
+
+        } // foreach
+
+        // Emit JavaScript with the clip information and
+        // the fallback div normally containing the link
+        $playlist_open = $playlist_close = '';
+        if (count($urls) > 1) {
+            $playlist_open  = "<div class=\"filter_rtmp_wrapper\">\n"
+                            . "<div class=\"filter_rtmp_video_playlist {$unique_id}\"></div>\n";
+            $playlist_close = "</div>\n";
         }
 
-        // Append the remainder (query string) of the original URL
-        $query_str  = htmlspecialchars_decode($url->get_query_string(false));
-        if (!empty($query_str)) {
-            $media_path .= '?' . $query_str;
-        }
-
-        // Fallback span (will normally contain link).
-        $output = html_writer::tag('span', core_media_player::PLACEHOLDER,
-            array('id' => $id, 'class' => 'mediaplugin filter_rtmp_video',
-                  'data-media-conx' => $media_conx, 'data-media-path' => $media_path,
-                  'data-media-height' => $height, 'data-media-width' => $width,
-                  'data-media-autosize' => $autosize)
-        );
-
-        return $output;
+        return "\n" . html_writer::script($clip_array_javascript)
+             . $playlist_open
+             . html_writer::tag('div', core_media_player::PLACEHOLDER,
+                 array('id' => $unique_id, 'class' => 'mediaplugin filter_rtmp_video',
+                       'data-media-height' => $height, 'data-media-width' => $width, 'data-media-autosize' => $autosize))
+             . $playlist_close;
 
     }
 
@@ -186,69 +202,89 @@ class filter_rtmp_player_audio extends core_media_player
     public function embed($urls, $name, $width, $height, $options)
     {
 
-        // Only supporting a single URL, take the first
-        $url = reset($urls);
-
         // Unique id even across different http requests made at the same time
         // (for AJAX, iframes).
-        $id = 'filter_rtmp_audio_' . md5(time() . '_' . rand());
+        $unique_id = "filter_rtmp_" . md5(time() . '_' . rand());
 
-        // Parse the URL here to simplify the JavaScript
-        // module. FlowPlayer rtmp needs the URL massaged
-        // a little.
-        $url_path = $url->get_path(false);
-        if (0 === strpos($url_path, '/' )) {
-            $url_path = substr($url_path, 1);
-        }
-        $path_parts = explode('/', $url_path);
+        $clip_array_javascript = "var {$unique_id} = [];";
+        $clip_index = 0;
+        foreach ($urls as $url) {
 
-        $provider = $url->get_param('provider');
-        if ($provider != null) {
-           $url->remove_params(array('provider'));
-        }
-
-        switch ($provider) {
-            case "acf": /* Amazon Cloudfront */
-                $media_conx = str_replace($url_path, '', $url->out_omit_querystring()) . array_shift($path_parts) . '/' . array_shift($path_parts);
-                break;
-            default:    /* Flash Media, Red5, Wowza */
-                $media_conx = str_replace($url_path, '', $url->out_omit_querystring()) . array_shift($path_parts);
-        }
-
-        // Put together the media path from the remainder of
-        // the un-shifted path_parts elements
-        $media_path = trim(implode('/', $path_parts));
-
-        // If there is an extension, remove it, but in the
-        // case of an mp4 leave it as well as prepend it to
-        // media path
-        $matches = array();
-        if (preg_match('/\.(' . join('|', $this->get_supported_extensions()) . ')$/i', $media_path, $matches)) {
-            switch ($matches[1]) {
-                case "mp3" :
-                    if (0 === preg_match("/^mp3:/", $media_path)) {
-                        $media_path = substr($matches[1] . ':' . $media_path, 0, 0 - strlen($matches[0]));
-                    }
-                    break;
-                default :
-                    $media_path = substr($media_path, 0, 0 - strlen($matches[0]));
+            // Parse the URL here to simplify the JavaScript
+            // module. FlowPlayer rtmp needs the URL massaged
+            // a little.
+            $url_path = $url->get_path(false);
+            if (0 === strpos($url_path, '/' )) {
+                $url_path = substr($url_path, 1);
             }
+            $path_parts = explode('/', $url_path);
+
+            $provider = $url->get_param('provider');
+            switch ($provider) {
+                case "acf": /* Amazon Cloudfront */
+                    $media_conx = str_replace($url_path, '', $url->out_omit_querystring()) . array_shift($path_parts) . '/' . array_shift($path_parts);
+                    break;
+                default:    /* Flash Media, Red5, Wowza */
+                    $media_conx = str_replace($url_path, '', $url->out_omit_querystring()) . array_shift($path_parts);
+            }
+
+            // Put together the media path from the remainder of
+            // the un-shifted path_parts elements
+            $media_path = trim(implode('/', $path_parts));
+
+            // Get the name from the $options, if not present there
+            // take it from last segment of media path
+            $media_title = isset($options['PLAYLIST_NAMES'][$url->out()])
+                         ? $options['PLAYLIST_NAMES'][$url->out()]
+                         : str_replace('+', ' ', array_pop($path_parts));
+
+            // Now that the title has been referenced using the orig
+            // URL, remove the provider param if it is present
+            if ($provider != null) {
+                $url->remove_params(array('provider'));
+            }
+
+            // If there is an extension, remove it, but in the
+            // case of an mp4 leave it as well as prepend it to
+            // media path
+            $matches = array();
+            if (preg_match('/\.(' . join('|', $this->get_supported_extensions()) . ')$/i', $media_path, $matches)) {
+                switch ($matches[1]) {
+                    case "mp3" :
+                        if (0 === preg_match("/^mp3:/", $media_path)) {
+                            $media_path = substr($matches[1] . ':' . $media_path, 0, 0 - strlen($matches[0]));
+                        }
+                        break;
+                    default :
+                        $media_path = substr($media_path, 0, 0 - strlen($matches[0]));
+                }
+            }
+
+            // Append the remainder (query string) of the original URL
+            $query_str  = htmlspecialchars_decode($url->get_query_string(false));
+            if (!empty($query_str)) {
+                $media_path .= '?' . $query_str;
+            }
+
+            $clip_array_javascript .= "\n{$unique_id}[{$clip_index}] = { netConnectionUrl: '{$media_conx}', url: '{$media_path}', title: '{$media_title}', index: {$clip_index} };";
+            $clip_index++;
+
+        } // foreach
+
+        // Emit JavaScript with the clip information and
+        // the fallback div normally containing the link
+        $playlist_open = $playlist_close = '';
+        if (count($urls) > 1) {
+            $playlist_open  = "<div class=\"filter_rtmp_wrapper\">\n";
+            $playlist_close = "<div class=\"filter_rtmp_audio_playlist {$unique_id}\"></div>\n"
+                            . "</div>\n";
         }
 
-        // Append the remainder (query string) of the original URL
-        $query_str  = htmlspecialchars_decode($url->get_query_string(false));
-        if (!empty($query_str)) {
-            $media_path .= '?' . $query_str;
-        }
-
-        // Fallback span (will normally contain link).
-        $output = html_writer::tag('span', core_media_player::PLACEHOLDER,
-            array('id' => $id, 'class' => 'mediaplugin filter_rtmp_audio',
-                  'data-media-conx' => $media_conx, 'data-media-path' => $media_path,
-                  'style' => 'width: 300px; height:20px; display:block')
-        );
-
-        return $output;
+        return "\n" . html_writer::script($clip_array_javascript)
+             . $playlist_open
+             . html_writer::tag('div', core_media_player::PLACEHOLDER,
+                   array('id' => $unique_id, 'class' => 'mediaplugin filter_rtmp_audio'))
+             . $playlist_close;
 
     }
 
@@ -318,4 +354,3 @@ class filter_rtmp_player_link extends core_media_player
     }
 
 } // class filter_rtmp_player_link
-

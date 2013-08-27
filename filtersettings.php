@@ -34,4 +34,3 @@ if ($ADMIN->fulltree) {
     $settings->add(new admin_setting_configcheckbox('filter_rtmp_enable_video', get_string('rtmp_video','filter_rtmp'), '', 1));
 
 }
-

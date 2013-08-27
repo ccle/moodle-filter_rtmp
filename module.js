@@ -39,60 +39,68 @@ M.filter_rtmp = {
     init_flowplayer_rtmp_video: function(node) {
 
         // Get the attributes for the node
-        var mediaId = node.get('id');
-        if (typeof(mediaId) == 'undefined') { return; }
-        var mediaConx = node.getAttribute('data-media-conx');
-        if (typeof(mediaConx) == 'undefined') { return; }
-        var mediaPath = node.getAttribute('data-media-path');
-        if (typeof(mediaPath) == 'undefined') { return; }
+        var playerId = node.get('id');
+        if (typeof(playerId) == 'undefined') { return; }
+
         var mediaHeight = node.getAttribute('data-media-height');
         if (typeof(mediaHeight) == 'undefined') { mediaHeight = 0; }
         var mediaWidth  = node.getAttribute('data-media-width');
-        if (typeof(mediaWidth) == 'undefined') { mediaWidth  = 0; }
+        if (typeof(mediaWidth) == 'undefined') { mediaWidth = 0; }
         var mediaAutosize = node.getAttribute('data-media-autosize');
-        if (typeof(mediaAutosize) == 'undefined') { mediaAutosize  = true; }
+        if (typeof(mediaAutosize) == 'undefined') { mediaAutosize = true; }
         else { mediaAutosize = (isNaN(mediaAutosize) ? false : parseInt(mediaAutosize) == 1); }
 
         var flashConfig = { src: M.filter_rtmp._swf_cfg_base };
-
         // If dimensions specified, pass along in Flash configs
         if (mediaHeight > 0 && mediaWidth > 0) {
             flashConfig.width = mediaWidth; flashConfig.height = mediaHeight;
         }
 
-        // Apply the flowplayer
-        flowplayer(mediaId, flashConfig, {
+        var baseClip = {
+            provider: 'rtmp', myMeta: { autosize: mediaAutosize, resized: false },
+            autoPlay: false, autoBuffering: true, scaling: 'fit',
+            onMetaData: function(clip) {
+                // Get out if no autosizing or already resized
+                if (!clip.myMeta.autosize || clip.myMeta.resized) {
+                    return;
+                }
+                clip.myMeta.resized = true;
+                // Default dimensions (from Flash plugin?)
+                var width = clip.width, height = clip.height;
+                // Prefer dimensions in the clip metadata
+                if (typeof(clip.metaData.width) != 'undefined' && typeof(clip.metaData.height) != 'undefined') {
+                    width = clip.width; height = clip.height;
+                }
+                // If too small, adjust but keep same aspect ratio
+                if (width < M.filter_rtmp._min_video_width) {
+                    height = (height/width) * M.filter_rtmp._min_video_width;
+                    width  = M.filter_rtmp._min_video_width;
+                }
+                this._api().width = width; this._api().height = height;
+            }
+        };
+
+        var flowConfig = {
             plugins: {
                 controls: { autoHide: true }, rtmp: { url: M.filter_rtmp._swf_cfg_rtmp, objectEncoding: 0 }
             },
-            clip: {
-                provider: 'rtmp', url: mediaPath, netConnectionUrl: mediaConx,
-                myMeta: { autosize: mediaAutosize, resized: false },
-                autoPlay: false, autoBuffering: true, scaling: 'fit', 
-                onMetaData: function(clip) {
-                    // Get out if no autosizing or already resized
-                    if (!clip.myMeta.autosize || clip.myMeta.resized) {
-                        return;
-                    }
-                    clip.myMeta.resized = true;
-                    // Default dimensions (from Flash plugin?)
-                    var width = clip.width, height = clip.height;
-                    // Prefer dimensions in the clip metadata
-                    if (typeof(clip.metaData.width) != 'undefined' && typeof(clip.metaData.height) != 'undefined') {
-                        width = clip.width; height = clip.height;
-                    }
-                    // If too small, adjust but keep same aspect ratio
-                    if (width < M.filter_rtmp._min_video_width) {
-                        height = (height/width) * M.filter_rtmp._min_video_width;
-                        width  = M.filter_rtmp._min_video_width;
-                    }
-                    this._api().width = width; this._api().height = height;
-                }
-            },
+            clip: baseClip,
             onLoad: function() {
                 this.setVolume(M.filter_rtmp._default_volume); this.unmute();
             }
-        });
+        };
+
+        var playlist = window[playerId];
+        if (playlist.length == 1) {
+            baseClip.url = playlist[0].url;
+            baseClip.netConnectionUrl = playlist[0].netConnectionUrl;
+            flowplayer(playerId, flashConfig, flowConfig);
+        } else {
+            M.filter_rtmp.attachPlaylistPlugin();
+            M.filter_rtmp.Y.one('.filter_rtmp_video_playlist.' + playerId).setStyle('height', mediaHeight);
+            flowConfig.playlist = playlist;
+            flowplayer(playerId, flashConfig, flowConfig).playlist('.filter_rtmp_video_playlist.' + playerId, M.filter_rtmp.Y);
+        }
 
     }, // init_flowplayer_rtmp_video
 
@@ -100,27 +108,34 @@ M.filter_rtmp = {
     init_flowplayer_rtmp_audio: function(node) {
 
         // Get the attributes for the node
-        var mediaId = node.get('id');
-        if (typeof(mediaId) == 'undefined')     { return; }
-        var mediaConx = node.getAttribute('data-media-conx');
-        if (typeof(mediaConx) == 'undefined')   { return; }
-        var mediaPath = node.getAttribute('data-media-path');
-        if (typeof(mediaPath) == 'undefined')   { return; }
+        var playerId = node.get('id');
+        if (typeof(playerId) == 'undefined') { return; }
 
-        // Apply the flowplayer
-        flowplayer(mediaId, M.filter_rtmp._swf_cfg_base, {
+        var flashConfig = { src: M.filter_rtmp._swf_cfg_base };
+        var flowConfig = {
             plugins: {
                 controls: { autoHide: 'never', fullscreen: false, next: false, previous: false, scrubber: true,
                             play: true, pause: true, volume: true, mute: true, backgroundGradient: [0.5,0,0.3],
-                            controlall: true, height: 20, time: true },
+                            controlall: true, height: '100%', time: true },
                 rtmp: { url: M.filter_rtmp._swf_cfg_rtmp, durationFunc: 'getStreamLength' }
             },
-            clip: { provider: 'rtmp', autoPlay: false, url: mediaPath, netConnectionUrl: mediaConx },
+            clip: { provider: 'rtmp', autoPlay: false },
             play: null,
             onLoad: function() {
                 this.setVolume(M.filter_rtmp._default_volume); this.unmute();
             }
-        });
+        };
+        
+        var playlist = window[playerId];
+        if (playlist.length == 1) {
+            flowConfig.clip.url = playlist[0].url;
+            flowConfig.clip.netConnectionUrl = playlist[0].netConnectionUrl;
+            flowplayer(playerId, flashConfig, flowConfig);
+        } else {
+            M.filter_rtmp.attachPlaylistPlugin();
+            flowConfig.playlist = playlist;
+            flowplayer(playerId, flashConfig, flowConfig).playlist('.filter_rtmp_audio_playlist.' + playerId, M.filter_rtmp.Y);
+        }
         
     }, // init_flowplayer_rtmp_audio
 
@@ -136,6 +151,7 @@ M.filter_rtmp = {
             var loader = new Y.Loader({ modules: { yflowplayer: { fullpath: this._js_flowplayer } }, require: ['yflowplayer'] });
             useModules.push('yflowplayer');
         }
+
         // Need a new sandbox instance to which to attach the
         // flowplayer module (in the case where the flowplayer
         // script had not yet been loaded by javascript-static
@@ -147,5 +163,72 @@ M.filter_rtmp = {
 
     }, // init
 
-};
+    /* Alternate playlist plugin for Flowplayer, based upon
+     * their standard playlist plugin by Tero Piirainen, but
+     * uses YUI rather than jQuery, and is stripped down to
+     * essentials for use with rtmp_filter
+     */
+    attachPlaylistPlugin: function() {
+    $f.addPlugin("playlist", function(selector, Y) {
 
+        var thisPlayer = this, listContainer = Y.one(selector);
+        if (null == listContainer) return thisPlayer;
+
+        function buildPlaylist()
+        {
+            listContainer.detach('click'); listContainer.empty();
+            Y.Array.each(thisPlayer.getPlaylist(), function(clip) {
+                listContainer.appendChild(renderListItem(clip));
+            });
+            listContainer.delegate('click', function(e) {
+                e.preventDefault();
+                play(this);
+            }, 'a');
+            listItems = listContainer.all("a");
+        }
+
+        function renderListItem(clip)
+        {
+            return opts.template.replace('$%7B', '{').replace('%7D', '}').replace('$\{url\}', clip.url).replace('$\{title\}', clip.title);
+        }
+
+        function play(listItem)
+        {
+            if (listItem.hasClass(opts.playingClass) || listItem.hasClass(opts.pausedClass)) {
+                thisPlayer.toggle();
+            } else {
+                listItem.addClass(opts.progressClass);
+                thisPlayer.play(listItems.indexOf(listItem));
+            }
+        }
+
+        function clearCSS(node)
+        {
+            if (null == node) return;
+            node.removeClass(opts.playingClass).removeClass(opts.pausedClass).removeClass(opts.progressClass).removeClass(opts.stoppedClass);
+        }
+
+        var opts = { playingClass: 'playing', pausedClass: 'paused', progressClass:'progress', stoppedClass:'stopped', template: '<a href="${url}">${title}</a>', loop: false, continuousPlay: false, playOnClick: true };
+        var listItems = null;
+
+        thisPlayer.onBegin(function(clip) {
+            listItems.each(clearCSS); listItems.item(clip.index).addClass(opts.playingClass);
+        });
+        thisPlayer.onPause(function(clip) {
+            listItems.item(clip.index).removeClass(opts.playingClass).addClass(opts.pausedClass);
+        });
+        thisPlayer.onResume(function(clip) {
+            listItems.item(clip.index).removeClass(opts.pausedClass).addClass(opts.playingClass);
+        });
+        thisPlayer.onUnload(function() {
+            listItems.each(clearCSS);
+        });
+
+        buildPlaylist();
+
+        return thisPlayer;
+
+    }); // $f.addPlugin('playlist')
+    }, // attachPlaylistPlugin
+
+}; // M.filter_rtmp
