@@ -63,7 +63,7 @@ M.filter_rtmp = {
         // Apply the flowplayer
         flowplayer(mediaId, flashConfig, {
             plugins: {
-                controls: { autoHide: true }, rtmp: { url: M.filter_rtmp._swf_cfg_rtmp }
+                controls: { autoHide: true }, rtmp: { url: M.filter_rtmp._swf_cfg_rtmp, objectEncoding: 0 }
             },
             clip: {
                 provider: 'rtmp', url: mediaPath, netConnectionUrl: mediaConx,
