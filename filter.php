@@ -211,7 +211,7 @@ class filter_rtmp extends moodle_text_filter
                 }
 
                 foreach (explode("\n", $playlist_record->list) as $list_item) {
-                    @list($list_item_url, $list_item_name) = array_map('trim', explode(',', $list_item));
+                    @list($list_item_url, $list_item_name) = array_map('trim', explode(',', $list_item, 2));
                     array_push($expanded_urls, $list_item_url);
                     if (!empty($list_item_name)) {
                         $clip_names[$list_item_url] = $list_item_name;
