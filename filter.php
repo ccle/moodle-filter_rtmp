@@ -203,9 +203,14 @@ class filter_rtmp extends moodle_text_filter
 
             $matches = null;
 
-            if (preg_match('/^rtmp:\/\/playlist=(\w+)/', $url, $matches)) {
+            if (preg_match('/^rtmp:\/\/playlist=(.+)/', $url, $matches)) {
 
-                $playlist_record = self::get_playlist($COURSE->id, $matches[1]);
+                // The HTML editor content (where URLs with which we
+                // are concerned are placed) is massaged, converting
+                // ampersands. We need to put them back to match the
+                // playlist name
+                $playlist_name = str_replace('&amp;', '&', $matches[1]);
+                $playlist_record = self::get_playlist($COURSE->id, $playlist_name);
                 if (!$playlist_record) {
                     continue;
                 }
