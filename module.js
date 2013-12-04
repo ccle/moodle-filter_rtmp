@@ -36,17 +36,17 @@ M.filter_rtmp = {
     _default_volume: 80,
 
     
-    init_flowplayer_rtmp_video: function(node) {
+    init_flowplayer_rtmp_video: function(playerNode) {
 
-        // Get the attributes for the node
-        var playerId = node.get('id');
+        // Get the attributes for the playerNode
+        var playerId = playerNode.get('id');
         if (typeof(playerId) == 'undefined') { return; }
 
-        var mediaHeight = node.getAttribute('data-media-height');
+        var mediaHeight = playerNode.getAttribute('data-media-height');
         if (typeof(mediaHeight) == 'undefined') { mediaHeight = 0; }
-        var mediaWidth  = node.getAttribute('data-media-width');
+        var mediaWidth  = playerNode.getAttribute('data-media-width');
         if (typeof(mediaWidth) == 'undefined') { mediaWidth = 0; }
-        var mediaAutosize = node.getAttribute('data-media-autosize');
+        var mediaAutosize = playerNode.getAttribute('data-media-autosize');
         if (typeof(mediaAutosize) == 'undefined') { mediaAutosize = true; }
         else { mediaAutosize = (isNaN(mediaAutosize) ? false : parseInt(mediaAutosize) == 1); }
 
@@ -90,25 +90,29 @@ M.filter_rtmp = {
             }
         };
 
-        var playlist = window[playerId];
-        if (playlist.length == 1) {
-            baseClip.url = playlist[0].url;
-            baseClip.netConnectionUrl = playlist[0].netConnectionUrl;
+        var playlistNodes = M.filter_rtmp.Y.all('span.filter_rtmp_video_playlist.' + playerId + ' a.clip');
+        if (playlistNodes.size() == 0) {
+            baseClip.netConnectionUrl = playerNode.getAttribute('data-media-conx');
+            baseClip.url = playerNode.getAttribute('data-media-path');
             flowplayer(playerId, flashConfig, flowConfig);
         } else {
             M.filter_rtmp.attachPlaylistPlugin();
             M.filter_rtmp.Y.one('.filter_rtmp_video_playlist.' + playerId).setStyle('height', mediaHeight);
+            var playlist = [];
+            playlistNodes.each(function(node, nodeIndex) {
+                playlist[nodeIndex] = { index: nodeIndex, url: node.getAttribute('data-media-path'), netConnectionUrl: node.getAttribute('data-media-conx') };
+            });
             flowConfig.playlist = playlist;
-            flowplayer(playerId, flashConfig, flowConfig).playlist('.filter_rtmp_video_playlist.' + playerId, M.filter_rtmp.Y);
+            flowplayer(playerId, flashConfig, flowConfig).playlist(playlistNodes);
         }
 
     }, // init_flowplayer_rtmp_video
 
 
-    init_flowplayer_rtmp_audio: function(node) {
+    init_flowplayer_rtmp_audio: function(playerNode) {
 
-        // Get the attributes for the node
-        var playerId = node.get('id');
+        // Get the attributes for the playerNode
+        var playerId = playerNode.get('id');
         if (typeof(playerId) == 'undefined') { return; }
 
         var flashConfig = { src: M.filter_rtmp._swf_cfg_base };
@@ -126,15 +130,19 @@ M.filter_rtmp = {
             }
         };
         
-        var playlist = window[playerId];
-        if (playlist.length == 1) {
-            flowConfig.clip.url = playlist[0].url;
-            flowConfig.clip.netConnectionUrl = playlist[0].netConnectionUrl;
+        var playlistNodes = M.filter_rtmp.Y.all('span.filter_rtmp_audio_playlist.' + playerId + ' a.clip');
+        if (playlistNodes.size() == 0) {
+            flowConfig.clip.netConnectionUrl = playerNode.getAttribute('data-media-conx');
+            flowConfig.clip.url = playerNode.getAttribute('data-media-path');
             flowplayer(playerId, flashConfig, flowConfig);
         } else {
             M.filter_rtmp.attachPlaylistPlugin();
+            var playlist = [];
+            playlistNodes.each(function(node, nodeIndex) {
+                playlist[nodeIndex] = { index: nodeIndex, url: node.getAttribute('data-media-path'), netConnectionUrl: node.getAttribute('data-media-conx') };
+            });
             flowConfig.playlist = playlist;
-            flowplayer(playerId, flashConfig, flowConfig).playlist('.filter_rtmp_audio_playlist.' + playerId, M.filter_rtmp.Y);
+            flowplayer(playerId, flashConfig, flowConfig).playlist(playlistNodes);
         }
         
     }, // init_flowplayer_rtmp_audio
@@ -169,36 +177,29 @@ M.filter_rtmp = {
      * essentials for use with rtmp_filter
      */
     attachPlaylistPlugin: function() {
-    $f.addPlugin("playlist", function(selector, Y) {
+    $f.addPlugin("playlist", function(playlistNodes) {
 
-        var thisPlayer = this, listContainer = Y.one(selector);
-        if (null == listContainer) return thisPlayer;
+        if (null == playlistNodes || playlistNodes.size() == 0) return thisPlayer;
+
+        var opts = { playingClass: 'playing', pausedClass: 'paused', progressClass:'progress', stoppedClass:'stopped' };
+        var thisPlayer = this;
 
         function buildPlaylist()
         {
-            listContainer.detach('click'); listContainer.empty();
-            Y.Array.each(thisPlayer.getPlaylist(), function(clip) {
-                listContainer.appendChild(renderListItem(clip));
-            });
-            listContainer.delegate('click', function(e) {
+            playlistNodes.detach('click');
+            playlistNodes.on('click', function(e) {
                 e.preventDefault();
-                play(this);
-            }, 'a');
-            listItems = listContainer.all("a");
+                play(e.currentTarget);
+            });
         }
 
-        function renderListItem(clip)
+        function play(clickedNode)
         {
-            return opts.template.replace('$%7B', '{').replace('%7D', '}').replace('$\{url\}', clip.url).replace('$\{title\}', clip.title);
-        }
-
-        function play(listItem)
-        {
-            if (listItem.hasClass(opts.playingClass) || listItem.hasClass(opts.pausedClass)) {
+            if (clickedNode.hasClass(opts.playingClass) || clickedNode.hasClass(opts.pausedClass)) {
                 thisPlayer.toggle();
             } else {
-                listItem.addClass(opts.progressClass);
-                thisPlayer.play(listItems.indexOf(listItem));
+                clickedNode.addClass(opts.progressClass);
+                thisPlayer.play(playlistNodes.indexOf(clickedNode));
             }
         }
 
@@ -208,27 +209,23 @@ M.filter_rtmp = {
             node.removeClass(opts.playingClass).removeClass(opts.pausedClass).removeClass(opts.progressClass).removeClass(opts.stoppedClass);
         }
 
-        var opts = { playingClass: 'playing', pausedClass: 'paused', progressClass:'progress', stoppedClass:'stopped', template: '<a href="${url}">${title}</a>', loop: false, continuousPlay: false, playOnClick: true };
-        var listItems = null;
-
         thisPlayer.onBegin(function(clip) {
-            listItems.each(clearCSS); listItems.item(clip.index).addClass(opts.playingClass);
+            playlistNodes.each(clearCSS); playlistNodes.item(clip.index).addClass(opts.playingClass);
         });
         thisPlayer.onPause(function(clip) {
-            listItems.item(clip.index).removeClass(opts.playingClass).addClass(opts.pausedClass);
+            playlistNodes.item(clip.index).removeClass(opts.playingClass).addClass(opts.pausedClass);
         });
         thisPlayer.onResume(function(clip) {
-            listItems.item(clip.index).removeClass(opts.pausedClass).addClass(opts.playingClass);
+            playlistNodes.item(clip.index).removeClass(opts.pausedClass).addClass(opts.playingClass);
         });
         thisPlayer.onUnload(function() {
-            listItems.each(clearCSS);
+            playlistNodes.each(clearCSS);
         });
 
         buildPlaylist();
-
         return thisPlayer;
 
     }); // $f.addPlugin('playlist')
-    }, // attachPlaylistPlugin
+    },  // attachPlaylistPlugin
 
 }; // M.filter_rtmp

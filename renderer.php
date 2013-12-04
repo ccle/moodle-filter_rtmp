@@ -91,8 +91,7 @@ class filter_rtmp_player_video extends core_media_player
             $autosize  = true;
         }
 
-        $clip_array_javascript = "var {$unique_id} = [];";
-        $clip_index = 0;
+        $clip_array = array();
         foreach ($urls as $url) {
 
             // Parse the URL here to simplify the JavaScript
@@ -152,25 +151,38 @@ class filter_rtmp_player_video extends core_media_player
                 $media_path .= '?' . $query_str;
             }
 
-            $clip_array_javascript .= "\n{$unique_id}[{$clip_index}] = { netConnectionUrl: '{$media_conx}', url: '{$media_path}', title: '{$media_title}', index: {$clip_index} };";
-            $clip_index++;
+            $clip_array[] = array('conx' => $media_conx, 'path' => $media_path, 'title' => $media_title);
 
         } // foreach
 
-        // Emit JavaScript with the clip information and
-        // the fallback div normally containing the link
-        $playlist_open = $playlist_close = '';
-        if (count($urls) > 1) {
-            $playlist_open  = "<div class=\"filter_rtmp_wrapper\">\n"
-                            . "<div class=\"filter_rtmp_video_playlist {$unique_id}\"></div>\n";
-            $playlist_close = "</div>\n";
+        // For situation where one item in clip array, render
+        // only a span tag with the needed data- attributes
+        $playlist_open = $playlist_close = $content = '';
+        $player_elem_attrs = array('id' => $unique_id, 'class' => 'mediaplugin filter_rtmp_video', 'data-media-height' => $height, 'data-media-width' => $width, 'data-media-autosize' => $autosize);
+        if (count($clip_array) == 1) {
+
+            $player_elem_attrs['data-media-conx']  = $clip_array[0]['conx'];
+            $player_elem_attrs['data-media-path']  = $clip_array[0]['path'];
+            $player_elem_attrs['data-media-title'] = $clip_array[0]['title'];
+
+        } elseif ($clip_array) {
+
+            // Otherwise, array has elements (and more than one)
+            // so render a list of <a> tags with the needed data-
+            // attrs and wrap them in a span with a _playlist CSS
+            // class attribute so JavaScript can detect them
+            $playlist_open  = "<span class=\"filter_rtmp_wrapper\">\n"
+                            . "<span class=\"filter_rtmp_video_playlist {$unique_id}\">\n";
+            for ($clip_index = 0; $clip_index < count($clip_array); $clip_index++) {
+                $playlist_open .= "<a class=\"clip\" href=\"#\" data-media-path=\"{$clip_array[$clip_index]['path']}\" data-media-conx=\"{$clip_array[$clip_index]['conx']}\">{$clip_array[$clip_index]['title']}</a>\n";
+            }
+            $playlist_open .= "</span>\n";
+            $playlist_close = "</span>\n";
+
         }
 
-        return "\n" . html_writer::script($clip_array_javascript)
-             . $playlist_open
-             . html_writer::tag('div', core_media_player::PLACEHOLDER,
-                 array('id' => $unique_id, 'class' => 'mediaplugin filter_rtmp_video',
-                       'data-media-height' => $height, 'data-media-width' => $width, 'data-media-autosize' => $autosize))
+        return $playlist_open
+             . html_writer::tag('span', core_media_player::PLACEHOLDER, $player_elem_attrs)
              . $playlist_close;
 
     }
@@ -206,8 +218,8 @@ class filter_rtmp_player_audio extends core_media_player
         // (for AJAX, iframes).
         $unique_id = "filter_rtmp_" . md5(time() . '_' . rand());
 
-        $clip_array_javascript = "var {$unique_id} = [];";
-        $clip_index = 0;
+      //$clip_array_javascript = "var {$unique_id} = [];";
+        $clip_array = array();
         foreach ($urls as $url) {
 
             // Parse the URL here to simplify the JavaScript
@@ -266,24 +278,37 @@ class filter_rtmp_player_audio extends core_media_player
                 $media_path .= '?' . $query_str;
             }
 
-            $clip_array_javascript .= "\n{$unique_id}[{$clip_index}] = { netConnectionUrl: '{$media_conx}', url: '{$media_path}', title: '{$media_title}', index: {$clip_index} };";
-            $clip_index++;
+            $clip_array[] = array('conx' => $media_conx, 'path' => $media_path, 'title' => $media_title);
 
         } // foreach
 
-        // Emit JavaScript with the clip information and
-        // the fallback div normally containing the link
-        $playlist_open = $playlist_close = '';
-        if (count($urls) > 1) {
-            $playlist_open  = "<div class=\"filter_rtmp_wrapper\">\n";
-            $playlist_close = "<div class=\"filter_rtmp_audio_playlist {$unique_id}\"></div>\n"
-                            . "</div>\n";
+        // For situation where one item in clip array, render
+        // only a span tag with the needed data- attributes
+        $playlist_open = $playlist_close = $content = '';
+        $player_elem_attrs = array('id' => $unique_id, 'class' => 'mediaplugin filter_rtmp_audio');
+        if (count($clip_array) == 1) {
+
+            $player_elem_attrs['data-media-conx']  = $clip_array[0]['conx'];
+            $player_elem_attrs['data-media-path']  = $clip_array[0]['path'];
+            $player_elem_attrs['data-media-title'] = $clip_array[0]['title'];
+
+        } elseif ($clip_array) {
+
+            // Otherwise, array has elements (and more than one)
+            // so render a list of <a> tags with the needed data-
+            // attrs and wrap them in a span with a _playlist CSS
+            // class attribute so JavaScript can detect them
+            $playlist_open  = "<span class=\"filter_rtmp_wrapper\">\n";
+            $playlist_close = "<span class=\"filter_rtmp_audio_playlist {$unique_id}\">";
+            for ($clip_index = 0; $clip_index < count($clip_array); $clip_index++) {
+                $playlist_close .= "<a class=\"clip\" href=\"#\" data-media-path=\"{$clip_array[$clip_index]['path']}\" data-media-conx=\"{$clip_array[$clip_index]['conx']}\">{$clip_array[$clip_index]['title']}</a>\n";
+            }
+            $playlist_close .= "</span>\n</span>\n";
+
         }
 
-        return "\n" . html_writer::script($clip_array_javascript)
-             . $playlist_open
-             . html_writer::tag('div', core_media_player::PLACEHOLDER,
-                   array('id' => $unique_id, 'class' => 'mediaplugin filter_rtmp_audio'))
+        return $playlist_open
+             . html_writer::tag('span', core_media_player::PLACEHOLDER, $player_elem_attrs)
              . $playlist_close;
 
     }

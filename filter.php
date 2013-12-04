@@ -63,7 +63,14 @@ class filter_rtmp extends moodle_text_filter
         global $CFG, $PAGE;
         static $js_init_called = false;
 
-
+        // Need this test unfortunately because the page content
+        // is pre-rendered in some places such as question preview
+        // which goofs the $js_init_called assignment--which is
+        // used to prevent some necessary inline JavaScript from
+        // being emitted more than once
+        if ($PAGE->state != moodle_page::STATE_IN_BODY) {
+            return $text;
+        }
 
         if (!is_string($text) or empty($text)) {
             // non string data can not be filtered anyway
