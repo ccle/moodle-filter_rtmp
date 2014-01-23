@@ -68,7 +68,7 @@ class filter_rtmp extends moodle_text_filter
         // which goofs the $js_init_called assignment--which is
         // used to prevent some necessary inline JavaScript from
         // being emitted more than once
-        if ($PAGE->state != moodle_page::STATE_IN_BODY) {
+        if ($PAGE->pagetype == 'question-preview' && $PAGE->state != moodle_page::STATE_IN_BODY) {
             return $text;
         }
 
