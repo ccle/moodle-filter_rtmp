@@ -81,8 +81,8 @@ class filter_rtmp_player_video extends core_media_player
         global $CFG;
 
 
-        // Is this player renderer enabled?
-        if (empty($CFG->filter_rtmp_enable_video)) {
+        // If player disabled or cron task return empty str
+        if (empty($CFG->filter_rtmp_enable_video) || CLI_SCRIPT) {
             return '';
         }
 
@@ -272,8 +272,8 @@ class filter_rtmp_player_audio extends core_media_player
         global $CFG;
 
 
-        // Is this player renderer enabled?
-        if (empty($CFG->filter_rtmp_enable_audio)) {
+        // If player disabled or cron task return empty str
+        if (empty($CFG->filter_rtmp_enable_audio) || CLI_SCRIPT) {
             return '';
         }
 
@@ -397,8 +397,8 @@ class filter_rtmp_player_link extends core_media_player
     public function embed($urls, $name, $width, $height, $options)
     {
 
-        // If link is turned off, return empty.
-        if (!empty($options[core_media::OPTION_NO_LINK])) {
+        // If links turned off or cron task return empty str
+        if (!empty($options[core_media::OPTION_NO_LINK]) || CLI_SCRIPT) {
             return '';
         }
 

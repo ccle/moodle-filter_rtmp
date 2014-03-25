@@ -96,8 +96,8 @@ class filter_rtmp extends moodle_text_filter
         $regex = '~<a\s[^>]*href="(rtmp:\/\/(?:playlist=[^"]*|[^"]*(?:' . $this->embedmarkers . '))[^"]*)"[^>]*>([^>]*)</a>~is';
         $newtext = preg_replace_callback($regex, array($this, 'callback'), $text);
 
-        // If no joy then return original
-        if (empty($newtext)) {
+        // If no joy or no change then return original
+        if (empty($newtext) || $newtext === $text) {
             return $text;
         }
 
