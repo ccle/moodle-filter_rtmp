@@ -238,7 +238,7 @@ class filter_rtmp_player_video extends core_media_player
 
         // For situation where one item in clip array, render
         // only a span tag with the needed data- attributes
-        $playlist_open = $playlist_close = $span_content = '';
+        $playlist_wrapper = $playlist_open = $playlist_close = $span_content = '';
         $player_elem_attrs = array('id' => $unique_id, 'class' => 'mediaplugin filter_rtmp_video', 'data-media-height' => $height, 'data-media-width' => $width, 'data-media-autosize' => $autosize);
         if (count($clip_array) == 1) {
 
@@ -259,8 +259,8 @@ class filter_rtmp_player_video extends core_media_player
             // so render a list of <a> tags with the needed data-
             // attrs and wrap them in a span with a _playlist CSS
             // class attribute so JavaScript can detect them
-            $playlist_open  = "<span class=\"filter_rtmp_wrapper\">\n"
-                            . "<span class=\"filter_rtmp_video_playlist {$unique_id}\">\n";
+            $playlist_wrapper = "<span class=\"filter_rtmp_wrapper\">\n";
+            $playlist_open = "<span class=\"filter_rtmp_video_playlist {$unique_id}\">\n";
             for ($clip_index = 0; $clip_index < count($clip_array); $clip_index++) {
                 $clip_hls_url   = $CFG->filter_rtmp_hls_fallback ? " data-media-hls-url=\"" . filter_rtmp_renderer::get_hls_url($clip_array[$clip_index]['conx'], $clip_array[$clip_index]['path']) . "\"" : '';
                 $playlist_open .= "<a class=\"clip\" href=\"#\" data-media-conx=\"{$clip_array[$clip_index]['conx']}\" data-media-path=\"{$clip_array[$clip_index]['path']}\" data-media-captions=\"{$clip_array[$clip_index]['captions']}\"{$clip_hls_url}>{$clip_array[$clip_index]['title']}</a>\n";
@@ -271,8 +271,9 @@ class filter_rtmp_player_video extends core_media_player
 
         }
 
-        return $playlist_open
+        return $playlist_wrapper
              . html_writer::tag('span', $span_content, $player_elem_attrs)
+             . $playlist_open
              . $playlist_close;
 
     }
