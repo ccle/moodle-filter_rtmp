@@ -16,7 +16,6 @@
 	overflow-y: scroll;
 	display: block;
 	width: auto;
-	height: auto !important;
 	max-height: 240px;
 }
 .filter_rtmp_video_playlist a { display: block; padding: .3em; background: url([[pix:filter_rtmp|gradient_h]]) repeat-x #eaeaea; border-bottom: solid 1px #333; text-decoration: none; color: #333333; cursor: pointer; line-height: 1.2em; }
@@ -51,6 +50,13 @@
 .filter_rtmp_audio_playlist a.playlist_playing:hover, .filter_rtmp_audio_playlist a.playlist_paused:hover, .filter_rtmp_audio_playlist a.playlist_progress:hover { background-color: transparent !important; }
 .filter_rtmp_video .mediafallbacklink, .filter_rtmp_audio .mediafallbacklink { visibility: hidden; }
 
+/* Phone and tablet */
+@media only screen and (max-width: 1223px) {
+	.filter_rtmp_video_playlist {
+		height: auto !important;
+	}
+}
+
 /* Desktop and laptop */
 @media only screen and (min-width: 1224px) {
 	.filter_rtmp_video {
@@ -58,7 +64,7 @@
 	}
 	.flter_rtmp_video_playlist {
 		display: inline-block;
-		height: 240px;
+		height: 240px !important;
 	}
 }
 
