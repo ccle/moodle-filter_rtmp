@@ -3,11 +3,12 @@
 	font-size: 0px;
 	vertical-align:top;
 	background-color: #292929;
-	display: block;
+	display: inline-block;
 }
 
 .filter_rtmp_wrapper .filter_rtmp_video {
 	padding-left: 10px;
+	display: block;
 }
 
 .filter_rtmp_video_playlist {
@@ -59,7 +60,7 @@
 
 /* Desktop and laptop */
 @media only screen and (min-width: 1224px) {
-	.filter_rtmp_video {
+	.filter_rtmp_wrapper .filter_rtmp_video {
 		float: left;
 	}
 	.flter_rtmp_video_playlist {
